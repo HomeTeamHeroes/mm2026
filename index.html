@@ -176,11 +176,25 @@
     width: 100%;
   }
   .filter-btn.active {
-    background: #ffffff;
-    color: #000000;
+    background: rgba(255, 255, 255, 0.5);
+    color: #ffffff;
     --ab-c1: #888;
     --ab-c2: #fff;
     --ab-c3: #ddd;
+  }
+  .filter-btn[data-filter="oikein"].active {
+    background: rgba(0, 230, 77, 0.5);
+    color: #ffffff;
+    --ab-c1: #003310;
+    --ab-c2: #00e64d;
+    --ab-c3: #00ff66;
+  }
+  .filter-btn[data-filter="vaarin"].active {
+    background: rgba(255, 51, 51, 0.5);
+    color: #ffffff;
+    --ab-c1: #330000;
+    --ab-c2: #ff3333;
+    --ab-c3: #ff6666;
   }
 
   /* ── CARD LIST ──────────────────────────────────────────────────────── */
