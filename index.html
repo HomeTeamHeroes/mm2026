@@ -45,11 +45,17 @@
   .header {
     background: #111111;
     border-bottom: 2px solid var(--border);
-    padding: 0.9rem 1rem 0.75rem;
     padding-top: calc(0.9rem + env(safe-area-inset-top, 0px));
+    padding-bottom: 0.75rem;
     position: sticky;
     top: 0;
     z-index: 100;
+  }
+
+  .header-inner {
+    padding: 0 1rem;
+    max-width: 540px;
+    margin: 0 auto;
   }
 
   .header-top {
@@ -314,7 +320,6 @@
     .filters  { padding: 0.7rem 1rem 0; max-width: 540px; margin: 0 auto; grid-template-columns: repeat(4, 1fr); }
     .sync-bar { max-width: 540px; margin: 0 auto; }
     .ottelu   { font-size: 1rem; }
-    .header   { padding-left: 1.25rem; padding-right: 1.25rem; }
     .stat-label { font-size: 0.7rem; }
     .stat-value { font-size: 1rem; }
   }
@@ -323,11 +328,13 @@
 <body>
 
 <header class="header">
-  <div class="header-top">
-    <h1>⚽ MM 2026 · Vedot</h1>
-    <div class="bankroll-pill" id="bankrollPill"><span>Pankki</span>—</div>
+  <div class="header-inner">
+    <div class="header-top">
+      <h1>⚽ MM 2026 · Vedot</h1>
+      <div class="bankroll-pill" id="bankrollPill"><span>Pankki</span>—</div>
+    </div>
+    <div class="stats" id="statsBar"></div>
   </div>
-  <div class="stats" id="statsBar"></div>
 </header>
 
 <div class="filters" id="filters">
