@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MM 2026 · Vedonlyönti</title>
+<style>
+  /* ── Tokens ── */
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --surface2:  #21262d;
+    --border:    #30363d;
+    --text:      #e6edf3;
+    --muted:     #8b949e;
+    --green:     #3fb950;
+    --green-bg:  #0d2a1a;
+    --red:       #f85149;
+    --red-bg:    #2a0d0d;
+    --yellow:    #e3b341;
+    --yellow-bg: #2a1f00;
+    --blue:      #58a6ff;
+    --radius:    12px;
+    --radius-sm: 8px;
+    font-size: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 2rem;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #1a2332 0%, #0d1117 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 1rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(8px);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+  }
+  .header h1 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .header h1 span.flag { font-size: 1.3rem; }
+
+  .bankroll-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .bankroll-pill strong {
+    color: var(--yellow);
+    font-size: 0.95rem;
+  }
+
+  /* ── Stats bar ── */
+  .stats {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .stats::-webkit-scrollbar { display: none; }
+  .stat {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.35rem 0.65rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .stat strong { font-size: 0.9rem; }
+  .stat.green strong { color: var(--green); }
+  .stat.red   strong { color: var(--red); }
+  .stat.blue  strong { color: var(--blue); }
+  .stat.yellow strong { color: var(--yellow); }
+
+  /* ── Filters ── */
+  .filters {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.75rem 1rem 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .filter-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .filter-btn.active {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+  }
+
+  /* ── Card list ── */
+  .cards {
+    padding: 0.75rem 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: opacity 0.2s;
+  }
+  .card.oikein { border-left: 3px solid var(--green); }
+  .card.vaarin { border-left: 3px solid var(--red); }
+  .card.pending { border-left: 3px solid var(--border); }
+
+  /* Card top row: date/time + tulos badge */
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem 0.35rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-datetime {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .badge.oikein { background: var(--green-bg); color: var(--green); }
+  .badge.vaarin { background: var(--red-bg);   color: var(--red);   }
+  .badge.pending { background: var(--surface2); color: var(--muted); }
+
+  /* Card body */
+  .card-body { padding: 0.55rem 0.75rem; }
+
+  .ottelu {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 0.45rem;
+    color: var(--text);
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3rem 0.5rem;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .field-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .field-value {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .field-value.green { color: var(--green); }
+  .field-value.red   { color: var(--red);   }
+  .field-value.muted { color: var(--muted); }
+
+  /* Card footer: bankroll */
+  .card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.35rem 0.75rem 0.5rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .bankroll-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .bankroll-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--yellow);
+  }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 3rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  /* ── Sync info ── */
+  .sync-bar {
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--muted);
+    padding: 0.5rem 1rem;
+    margin-top: 0.25rem;
+  }
+  .sync-bar a { color: var(--blue); text-decoration: none; }
+
+  @media (min-width: 480px) {
+    .cards { padding: 0.75rem 1.25rem 0; max-width: 520px; margin: 0 auto; }
+    .header { padding: 1.25rem 1.25rem 1rem; }
+    .filters { padding: 0.75rem 1.25rem 0; }
+    .sync-bar { max-width: 520px; margin: 0 auto; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-top">
+    <h1><span class="flag">⚽</span> MM 2026 · Vedot</h1>
+    <div class="bankroll-pill" id="bankrollPill">Pankki: <strong>—</strong></div>
+  </div>
+  <div class="stats" id="statsBar"></div>
+</header>
+
+<div class="filters" id="filters">
+  <button class="filter-btn active" data-filter="all">Kaikki</button>
+  <button class="filter-btn" data-filter="played">Pelatut</button>
+  <button class="filter-btn" data-filter="pending">Tulossa</button>
+  <button class="filter-btn" data-filter="oikein">✓ Oikein</button>
+  <button class="filter-btn" data-filter="vaarin">✗ Väärin</button>
+</div>
+
+<div class="cards" id="cards"></div>
+<div class="sync-bar" id="syncBar"></div>
+
+<script>
+// ── Data source ──────────────────────────────────────────────────────────────
+// Replace SHEET_CSV_URL with your published Google Sheets CSV link:
+//   Sheets → File → Share → Publish to web → Sheet1 → CSV → Publish
+// Leave empty to use only the baked-in data below.
+const SHEET_CSV_URL = '';
+
+const STARTING_BANKROLL = 230;
+
+// Baked-in data (update by re-generating this file)
+const BAKED = [{"pvm":"11.6.","klo":"21:00","ottelu":"Meksiko - Etelä-Afrikka","ennuste":"Meksiko","tulos":"Oikein","panos":10.0,"kerroin":1.44,"vtp":14.4,"pankki":234.4},{"pvm":"12.6.","klo":"5:00","ottelu":"Etelä-Korea - Tshekki","ennuste":"Etelä-Korea","tulos":"Oikein","panos":10.0,"kerroin":2.75,"vtp":27.5,"pankki":251.9},{"pvm":"12.6.","klo":"22:00","ottelu":"Kanada - Bosnia","ennuste":"Kanada","tulos":"Väärin","panos":10.0,"kerroin":1.87,"vtp":-10.0,"pankki":241.9},{"pvm":"13.6.","klo":"4:00","ottelu":"Yhdysvallat - Paraguay","ennuste":"Yhdysvallat","tulos":"Oikein","panos":10.0,"kerroin":2.0,"vtp":20.0,"pankki":251.9},{"pvm":"13.6.","klo":"22:00","ottelu":"Qatar - Sveitsi","ennuste":"Sveitsi","tulos":"","panos":12.6,"kerroin":1.22,"vtp":null,"pankki":251.9},{"pvm":"14.6.","klo":"1:00","ottelu":"Brasilia - Marokko","ennuste":"Brasilia","tulos":"","panos":12.6,"kerroin":1.73,"vtp":null,"pankki":251.9},{"pvm":"14.6.","klo":"4:00","ottelu":"Haiti - Skotlanti","ennuste":"Skotlanti","tulos":"","panos":12.6,"kerroin":1.57,"vtp":null,"pankki":251.9},{"pvm":"14.6.","klo":"7:00","ottelu":"Australia - Turkki","ennuste":"Turkki","tulos":"","panos":12.6,"kerroin":1.73,"vtp":null,"pankki":251.9},{"pvm":"14.6.","klo":"20:00","ottelu":"Saksa - Curaçao","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"14.6.","klo":"23:00","ottelu":"Alankomaat - Japani","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"15.6.","klo":"2:00","ottelu":"Norsunluurannikko - Ecuador","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"15.6.","klo":"5:00","ottelu":"Ruotsi - Tunisia","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"15.6.","klo":"19:00","ottelu":"Espanja - Kap Verde","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"15.6.","klo":"22:00","ottelu":"Belgia - Egypti","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"16.6.","klo":"1:00","ottelu":"Saudi-Arabia - Uruguay","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"16.6.","klo":"4:00","ottelu":"Iran - Uusi-Seelanti","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"16.6.","klo":"22:00","ottelu":"Ranska - Senegal","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"17.6.","klo":"1:00","ottelu":"Irak - Norja","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"17.6.","klo":"4:00","ottelu":"Argentiina - Algeria","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"17.6.","klo":"7:00","ottelu":"Itävalta - Jordania","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"17.6.","klo":"20:00","ottelu":"Portugali - Kongo","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"17.6.","klo":"23:00","ottelu":"Englanti - Kroatia","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"18.6.","klo":"2:00","ottelu":"Ghana - Panama","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"18.6.","klo":"5:00","ottelu":"Uzbekistan - Kolumbia","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"18.6.","klo":"19:00","ottelu":"Tshekki - Etelä-Afrikka","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"18.6.","klo":"22:00","ottelu":"Sveitsi - Bosnia","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"19.6.","klo":"1:00","ottelu":"Kanada - Qatar","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"19.6.","klo":"4:00","ottelu":"Meksiko - Etelä-Korea","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"19.6.","klo":"22:00","ottelu":"Yhdysvallat - Australia","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"20.6.","klo":"1:00","ottelu":"Skotlanti - Marokko","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"20.6.","klo":"3:30","ottelu":"Brasilia - Haiti","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"20.6.","klo":"6:00","ottelu":"Turkki - Paraguay","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"20.6.","klo":"20:00","ottelu":"Alankomaat - Ruotsi","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"20.6.","klo":"23:00","ottelu":"Saksa - Norsunluurannikko","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"21.6.","klo":"3:00","ottelu":"Ecuador - Curaçao","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"21.6.","klo":"7:00","ottelu":"Tunisia - Japani","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"21.6.","klo":"19:00","ottelu":"Espanja - Saudi-Arabia","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"21.6.","klo":"22:00","ottelu":"Belgia - Iran","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"22.6.","klo":"1:00","ottelu":"Uruguay - Kap Verde","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"22.6.","klo":"4:00","ottelu":"Uusi-Seelanti - Egypti","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"22.6.","klo":"20:00","ottelu":"Argentiina - Itävalta","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"23.6.","klo":"0:00","ottelu":"Ranska - Irak","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"23.6.","klo":"3:00","ottelu":"Norja - Senegal","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"23.6.","klo":"6:00","ottelu":"Jordania - Algeria","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"23.6.","klo":"20:00","ottelu":"Portugali - Uzbekistan","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"23.6.","klo":"23:00","ottelu":"Englanti - Ghana","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"24.6.","klo":"2:00","ottelu":"Panama - Kroatia","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"24.6.","klo":"5:00","ottelu":"Kolumbia - Kongo","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"24.6.","klo":"22:00","ottelu":"Sveitsi - Kanada","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"24.6.","klo":"22:00","ottelu":"Bosnia-Hertsegovina - Qatar","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"25.6.","klo":"1:00","ottelu":"Skotlanti - Brasilia","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"25.6.","klo":"1:00","ottelu":"Marokko - Haiti","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"25.6.","klo":"4:00","ottelu":"Tshekki - Meksiko","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"25.6.","klo":"4:00","ottelu":"Etelä-Afrikka - Etelä-Korea","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"25.6.","klo":"23:00","ottelu":"Curaçao - Norsunluurannikko","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"25.6.","klo":"23:00","ottelu":"Ecuador - Saksa","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"26.6.","klo":"2:00","ottelu":"Japani - Ruotsi","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"26.6.","klo":"2:00","ottelu":"Tunisia - Alankomaat","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"26.6.","klo":"5:00","ottelu":"Turkki - Yhdysvallat","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"26.6.","klo":"5:00","ottelu":"Paraguay - Australia","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"26.6.","klo":"22:00","ottelu":"Norja - Ranska","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"26.6.","klo":"22:00","ottelu":"Senegal - Irak","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"27.6.","klo":"3:00","ottelu":"Kap Verde - Saudi-Arabia","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"27.6.","klo":"3:00","ottelu":"Uruguay - Espanja","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"27.6.","klo":"6:00","ottelu":"Egypti - Iran","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"27.6.","klo":"6:00","ottelu":"Uusi-Seelanti - Belgia","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"28.6.","klo":"0:00","ottelu":"Panama - Englanti","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"28.6.","klo":"0:00","ottelu":"Kroatia - Ghana","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"28.6.","klo":"2:30","ottelu":"Kolumbia - Portugali","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"28.6.","klo":"2:30","ottelu":"Kongo - Uzbekistan","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"28.6.","klo":"5:00","ottelu":"Algeria - Itävalta","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9},{"pvm":"28.6.","klo":"5:00","ottelu":"Jordania - Argentiina","ennuste":"","tulos":"","panos":12.6,"kerroin":null,"vtp":null,"pankki":251.9}];
+
+// ── CSV parser ───────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n').map(l => l.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+  // Expected CSV columns from Google Sheets:
+  // Pvm, Klo, Ottelu, Ennuste, Oikein/Väärin, Panos, Kerroin, Voitto/tappio, Pankki
+  // Skip header row (index 0 = row 4 in sheet = headers)
+  // Data starts at index that has a date value
+  const rows = [];
+  for (const line of lines) {
+    if (!line[0] || line[0] === 'Pvm' || line[0] === 'Bankroll') continue;
+    const panos   = parseFloat(line[5]);
+    const kerroin = parseFloat(line[6]);
+    const vtp     = parseFloat(line[7]);
+    const pankki  = parseFloat(line[8]);
+    rows.push({
+      pvm:     line[0] || '',
+      klo:     line[1] || '',
+      ottelu:  line[2] || '',
+      ennuste: line[3] || '',
+      tulos:   line[4] || '',
+      panos:   isNaN(panos)   ? null : panos,
+      kerroin: isNaN(kerroin) ? null : kerroin,
+      vtp:     isNaN(vtp)     ? null : vtp,
+      pankki:  isNaN(pankki)  ? null : pankki,
+    });
+  }
+  return rows;
+}
+
+// ── Formatting ───────────────────────────────────────────────────────────────
+function fmt(n, sign = false) {
+  if (n == null) return '—';
+  const s = Math.abs(n).toFixed(2).replace('.', ',') + ' €';
+  if (sign) return (n >= 0 ? '+' : '−') + s;
+  return (n < 0 ? '−' : '') + s;
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+let currentFilter = 'all';
+let allRows = [];
+
+function buildStats(rows) {
+  const played  = rows.filter(r => r.tulos === 'Oikein' || r.tulos === 'Väärin');
+  const oikein  = played.filter(r => r.tulos === 'Oikein');
+  const vaarin  = played.filter(r => r.tulos === 'Väärin');
+  const pending = rows.filter(r => !r.tulos);
+  const lastPankki = [...rows].reverse().find(r => r.pankki != null);
+  const current = lastPankki ? lastPankki.pankki : STARTING_BANKROLL;
+  const diff    = current - STARTING_BANKROLL;
+  const totalVtp = played.reduce((s, r) => s + (r.vtp || 0), 0);
+
+  document.getElementById('bankrollPill').innerHTML =
+    `Pankki: <strong>${current.toFixed(2).replace('.', ',')} €</strong>`;
+
+  const bar = document.getElementById('statsBar');
+  bar.innerHTML = `
+    <div class="stat blue"><div class="field-label">Pelejä</div><strong>${played.length}/${rows.length}</strong></div>
+    <div class="stat green"><div class="field-label">Oikein</div><strong>${oikein.length}</strong></div>
+    <div class="stat red"><div class="field-label">Väärin</div><strong>${vaarin.length}</strong></div>
+    <div class="stat ${diff >= 0 ? 'green' : 'red'}"><div class="field-label">Muutos</div><strong>${diff >= 0 ? '+' : ''}${diff.toFixed(2).replace('.', ',')} €</strong></div>
+    <div class="stat"><div class="field-label">Tulossa</div><strong>${pending.length}</strong></div>
+  `;
+}
+
+function renderCards(rows, filter) {
+  const container = document.getElementById('cards');
+
+  let filtered;
+  if (filter === 'oikein')  filtered = rows.filter(r => r.tulos === 'Oikein');
+  else if (filter === 'vaarin')  filtered = rows.filter(r => r.tulos === 'Väärin');
+  else if (filter === 'played')  filtered = rows.filter(r => r.tulos === 'Oikein' || r.tulos === 'Väärin');
+  else if (filter === 'pending') filtered = rows.filter(r => !r.tulos);
+  else filtered = rows;
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty">Ei otteluita tässä näkymässä.</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(r => {
+    const isOikein  = r.tulos === 'Oikein';
+    const isVaarin  = r.tulos === 'Väärin';
+    const isPending = !r.tulos;
+    const cardClass = isOikein ? 'oikein' : isVaarin ? 'vaarin' : 'pending';
+    const badgeClass = isOikein ? 'oikein' : isVaarin ? 'vaarin' : 'pending';
+    const badgeText  = isOikein ? '✓ Oikein' : isVaarin ? '✗ Väärin' : 'Tulossa';
+
+    const vtpColor = r.vtp == null ? 'muted' : r.vtp >= 0 ? 'green' : 'red';
+    const vtpText  = r.vtp == null ? '—' : fmt(r.vtp, true);
+
+    return `
+<div class="card ${cardClass}">
+  <div class="card-head">
+    <span class="card-datetime">${r.pvm} klo ${r.klo}</span>
+    <span class="badge ${badgeClass}">${badgeText}</span>
+  </div>
+  <div class="card-body">
+    <div class="ottelu">${r.ottelu}</div>
+    <div class="card-grid">
+      <div class="field">
+        <span class="field-label">Ennuste</span>
+        <span class="field-value">${r.ennuste || '—'}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Voitto/tappio</span>
+        <span class="field-value ${vtpColor}">${vtpText}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Panos</span>
+        <span class="field-value muted">${r.panos != null ? r.panos.toFixed(2).replace('.', ',') + ' €' : '—'}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Kerroin</span>
+        <span class="field-value">${r.kerroin != null ? r.kerroin.toFixed(2) : '—'}</span>
+      </div>
+    </div>
+  </div>
+  <div class="card-foot">
+    <span class="bankroll-label">Pankki tämän jälkeen</span>
+    <span class="bankroll-value">${r.pankki != null ? r.pankki.toFixed(2).replace('.', ',') + ' €' : '—'}</span>
+  </div>
+</div>`;
+  }).join('');
+}
+
+function render(rows) {
+  allRows = rows;
+  buildStats(rows);
+  renderCards(rows, currentFilter);
+}
+
+// ── Filters ──────────────────────────────────────────────────────────────────
+document.getElementById('filters').addEventListener('click', e => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentFilter = btn.dataset.filter;
+  renderCards(allRows, currentFilter);
+});
+
+// ── Load data ────────────────────────────────────────────────────────────────
+async function loadData() {
+  if (SHEET_CSV_URL) {
+    try {
+      const res = await fetch(SHEET_CSV_URL + '&cachebust=' + Date.now());
+      const text = await res.text();
+      const rows = parseCSV(text);
+      if (rows.length > 0) {
+        render(rows);
+        document.getElementById('syncBar').innerHTML =
+          'Päivitetty Google Sheetistä · <a href="' + SHEET_CSV_URL.split('?')[0] + '" target="_blank">Avaa taulukko</a>';
+        return;
+      }
+    } catch(e) {
+      console.warn('CSV fetch failed, using baked data', e);
+    }
+  }
+  render(BAKED);
+  document.getElementById('syncBar').textContent =
+    SHEET_CSV_URL ? 'Virhe ladattaessa – näytetään tallennettu data.' : 'Data ladattu tiedostosta · Liitä Google Sheets URL päivittääksesi automaattisesti';
+}
+
+loadData();
+</script>
+</body>
+</html>
