@@ -41,19 +41,54 @@
     line-height: 1.4;
   }
 
+  /* ── ANIMATED BORDER MIXIN ──────────────────────────────────────────── */
+  @property --_a { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+  @keyframes spin-border { to { --_a: 360deg; } }
+
+  .ab {
+    position: relative;
+    border: none !important;
+  }
+  .ab::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: var(--ab-w, 2px);
+    border-radius: inherit;
+    background: conic-gradient(from var(--_a),
+      var(--ab-c1), var(--ab-c2), var(--ab-c3), var(--ab-c2), var(--ab-c1));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 0;
+    animation: spin-border var(--ab-speed, 4s) linear infinite;
+  }
+
+  /* Color presets */
+  .ab-gray   { --ab-c1:#222; --ab-c2:#666; --ab-c3:#aaa; }
+  .ab-white  { --ab-c1:#444; --ab-c2:#fff; --ab-c3:#ccc; }
+  .ab-green  { --ab-c1:#003310; --ab-c2:#00e64d; --ab-c3:#00ff66; }
+  .ab-red    { --ab-c1:#330000; --ab-c2:#ff3333; --ab-c3:#ff6666; }
+  .ab-blue   { --ab-c1:#001a2e; --ab-c2:#4db8ff; --ab-c3:#99d6ff; }
+  .ab-yellow { --ab-c1:#332200; --ab-c2:#ffcc00; --ab-c3:#ffe066; }
+  .ab-slow { --ab-speed: 8.75s; }
+  .ab-fast { --ab-speed: 8s; }
+
   /* ── HEADER ─────────────────────────────────────────────────────────── */
   .header {
     background: #111111;
-    border-bottom: 2px solid var(--border);
+    border-bottom: none;
     padding-top: calc(0.9rem + env(safe-area-inset-top, 0px));
-    padding-bottom: 0.75rem;
+    padding-bottom: 0;
     position: sticky;
     top: 0;
     z-index: 100;
   }
 
   .header-inner {
-    padding: 0 1rem;
+    padding: 0 1rem 0.75rem;
     max-width: 540px;
     margin: 0 auto;
   }
@@ -141,9 +176,11 @@
     width: 100%;
   }
   .filter-btn.active {
-    background: var(--blue);
-    border-color: var(--blue);
-    color: #000;
+    background: #ffffff;
+    color: #000000;
+    --ab-c1: #888;
+    --ab-c2: #fff;
+    --ab-c3: #ddd;
   }
 
   /* ── CARD LIST ──────────────────────────────────────────────────────── */
@@ -164,7 +201,15 @@
   .card.oikein   { border-color: var(--green); }
   .card.vaarin   { border-color: var(--red); }
   .card.pending  { border-color: var(--border); }
-  .card.veikattu { border-color: var(--text); }
+  .card.veikattu { border-color: transparent; position: relative; --ab-c1:#444; --ab-c2:#fff; --ab-c3:#ccc; }
+
+  /* Header shader divider */
+  .header-divider {
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    margin-top: 0;
+  }
   .card.scenario { border-color: var(--blue); }
 
   /* Card head */
@@ -248,7 +293,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.4rem 0.75rem 0.45rem;
+    padding: 0.22rem 0.75rem 0.27rem;
     border-top: 1px solid var(--border);
     background: var(--surface2);
     gap: 0.5rem;
@@ -257,14 +302,14 @@
   .card.vaarin .card-foot { border-color: var(--red); }
 
   .bankroll-label {
-    font-size: 0.6rem;
+    font-size: 0.72rem;
     font-weight: 700;
     color: var(--text-sec);
     text-transform: uppercase;
     letter-spacing: 0.07em;
   }
   .bankroll-value {
-    font-size: 0.95rem;
+    font-size: 1.14rem;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
     color: var(--yellow);
@@ -322,17 +367,18 @@
   <div class="header-inner">
     <div class="header-top">
       <h1>⚽ MM 2026 · Vedot</h1>
-      <div class="bankroll-pill" id="bankrollPill"><span>Pankki</span>—</div>
+      <div class="bankroll-pill ab ab-yellow ab-slow" id="bankrollPill"><span>Pankki</span>—</div>
     </div>
     <div class="stats" id="statsBar"></div>
   </div>
+  <div class="header-divider"></div>
 </header>
 
 <div class="filters" id="filters">
-  <button class="filter-btn active" data-filter="all">KAIKKI</button>
-  <button class="filter-btn" data-filter="pending">TULOSSA</button>
-  <button class="filter-btn" data-filter="oikein">✓ OIKEIN</button>
-  <button class="filter-btn" data-filter="vaarin">✗ VÄÄRIN</button>
+  <button class="filter-btn ab ab-gray ab-slow active" data-filter="all">KAIKKI</button>
+  <button class="filter-btn ab ab-gray ab-slow" data-filter="pending">TULOSSA</button>
+  <button class="filter-btn ab ab-green ab-slow" data-filter="oikein">✓ OIKEIN</button>
+  <button class="filter-btn ab ab-red ab-slow" data-filter="vaarin">✗ VÄÄRIN</button>
 </div>
 
 <div class="cards" id="cards"></div>
@@ -413,10 +459,10 @@ function buildStats(rows) {
     `<span>Pankki</span>${current.toFixed(2).replace('.', ',')} €`;
 
   document.getElementById('statsBar').innerHTML = `
-    <div class="stat blue"><span class="stat-label">Pelejä</span><span class="stat-value">${played.length}/${rows.length}</span></div>
-    <div class="stat green"><span class="stat-label">Oikein</span><span class="stat-value">${oikein.length}</span></div>
-    <div class="stat red"><span class="stat-label">Väärin</span><span class="stat-value">${vaarin.length}</span></div>
-    <div class="stat ${diff >= 0 ? 'green' : 'red'}"><span class="stat-label">Muutos</span><span class="stat-value">${diff >= 0 ? '+' : ''}${diff.toFixed(2).replace('.', ',')} €</span></div>
+    <div class="stat blue ab ab-blue ab-slow"><span class="stat-label">Pelejä</span><span class="stat-value">${played.length}/${rows.length}</span></div>
+    <div class="stat green ab ab-green ab-slow"><span class="stat-label">Oikein</span><span class="stat-value">${oikein.length}</span></div>
+    <div class="stat red ab ab-red ab-slow"><span class="stat-label">Väärin</span><span class="stat-value">${vaarin.length}</span></div>
+    <div class="stat ${diff >= 0 ? 'green ab ab-green' : 'red ab ab-red'} ab-slow"><span class="stat-label">Muutos</span><span class="stat-value">${diff >= 0 ? '+' : ''}${diff.toFixed(2).replace('.', ',')} €</span></div>
   `;
 }
 
@@ -486,10 +532,12 @@ function renderCards(rows, filter) {
 </div>`;
     }
 
-    const vtpColor = r.vtp == null ? 'dim' : r.vtp >= 0 ? 'green' : 'red';
-    const vtpText  = r.vtp == null ? '—' : fmt(r.vtp, true);
+    const vtpNet   = r.vtp == null ? null : (isOikein && r.panos != null ? r.vtp - r.panos : r.vtp);
+    const vtpColor = vtpNet == null ? 'dim' : vtpNet >= 0 ? 'green' : 'red';
+    const vtpText  = vtpNet == null ? '—' : fmt(vtpNet, true);
+    const abClass = isOikein ? 'ab ab-green ab-slow' : isVaarin ? 'ab ab-red ab-slow' : isVeikattu ? 'ab ab-white ab-slow' : '';
     return `
-<div class="card ${cardClass}">
+<div class="card ${cardClass} ${abClass}">
   <div class="card-head">
     <span class="card-datetime">${r.pvm ? weekday(r.pvm) + ' ' + r.pvm : ''}${r.klo ? ' klo ' + r.klo : ''}</span>
     <span class="badge ${badgeClass}">${badgeText}</span>
@@ -499,7 +547,7 @@ function renderCards(rows, filter) {
     <div class="card-grid">
       <div class="field">
         <span class="field-label">VEIKATTU</span>
-        <span class="field-value" style="text-transform:uppercase;text-decoration:underline">${r.ennuste || '—'}</span>
+        <span class="field-value${isOikein ? ' green' : isVaarin ? ' red' : ''}" style="text-transform:uppercase;text-decoration:underline">${r.ennuste || '—'}</span>
       </div>
       <div class="field">
         <span class="field-label">Voitto / tappio</span>
@@ -507,7 +555,7 @@ function renderCards(rows, filter) {
       </div>
       <div class="field">
         <span class="field-label">Panos</span>
-        <span class="field-value dim">${r.panos != null ? r.panos.toFixed(2).replace('.', ',') + ' €' : '—'}</span>
+        <span class="field-value dim">${r.ennuste && r.panos != null ? r.panos.toFixed(2).replace('.', ',') + ' €' : '—'}</span>
       </div>
       <div class="field">
         <span class="field-label">Kerroin</span>
@@ -517,7 +565,7 @@ function renderCards(rows, filter) {
   </div>
   <div class="card-foot">
     <span class="bankroll-label">Pankki tämän jälkeen</span>
-    <span class="bankroll-value">${r.pankki != null ? r.pankki.toFixed(2).replace('.', ',') + ' €' : '—'}</span>
+    <span class="bankroll-value">${r.pankki != null && r.tulos ? r.pankki.toFixed(2).replace('.', ',') + ' €' : '<span style="color:var(--yellow)">?</span>'}</span>
   </div>
 </div>`;
   });
