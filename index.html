@@ -164,6 +164,7 @@
   .card.oikein   { border-color: var(--green); }
   .card.vaarin   { border-color: var(--red); }
   .card.pending  { border-color: var(--border); }
+  .card.veikattu { border-color: var(--text); }
   .card.scenario { border-color: var(--blue); }
 
   /* Card head */
@@ -200,6 +201,7 @@
   .badge.oikein   { background: var(--green);  color: #000; border-color: var(--green); }
   .badge.vaarin   { background: var(--red);    color: #fff; border-color: var(--red); }
   .badge.pending  { background: transparent;   color: var(--text); border-color: var(--border); }
+  .badge.veikattu { background: transparent;   color: var(--text); border-color: var(--text); }
   .badge.extra    { background: var(--yellow); color: #000; border-color: var(--yellow); }
   .badge.scenario { background: var(--blue);   color: #000; border-color: var(--blue); }
 
@@ -460,16 +462,17 @@ function renderCards(rows, filter) {
   else if (filter === 'pending') filtered = rows.filter(r => !r.tulos);
   else filtered = rows;
 
-  const showScenario = filter === 'all' || filter === 'pending';
-  const scenario = showScenario ? buildScenario(rows) : null;
+  const showScenario = false;
+  const scenario = null;
 
   const matchCards = filtered.map(r => {
     const isOikein = r.tulos === 'Oikein';
     const isVaarin = r.tulos === 'Väärin';
     const isExtra  = r.ottelu.startsWith('Extraveto');
-    const cardClass  = isOikein ? 'oikein' : isVaarin ? 'vaarin' : 'pending';
-    const badgeClass = isOikein ? 'oikein' : isVaarin ? 'vaarin' : isExtra ? 'extra' : 'pending';
-    const badgeText  = isOikein ? '✓ Oikein' : isVaarin ? '✗ Väärin' : isExtra ? 'Extraveto' : 'Tulossa';
+    const isVeikattu = !r.tulos && r.panos != null && r.kerroin != null;
+    const cardClass  = isOikein ? 'oikein' : isVaarin ? 'vaarin' : isVeikattu ? 'veikattu' : 'pending';
+    const badgeClass = isOikein ? 'oikein' : isVaarin ? 'vaarin' : isExtra ? 'extra' : isVeikattu ? 'veikattu' : 'pending';
+    const badgeText  = isOikein ? '✓ OIKEIN' : isVaarin ? '✗ VÄÄRIN' : isExtra ? 'EXTRAVETO' : isVeikattu ? 'VEIKATTU' : 'TULOSSA';
     if (isExtra) {
       return `
 <div class="card pending">
@@ -495,8 +498,8 @@ function renderCards(rows, filter) {
     <div class="ottelu">${r.ottelu.toUpperCase()}</div>
     <div class="card-grid">
       <div class="field">
-        <span class="field-label">Ennuste</span>
-        <span class="field-value">${r.ennuste || '—'}</span>
+        <span class="field-label">VEIKATTU</span>
+        <span class="field-value" style="text-transform:uppercase;text-decoration:underline">${r.ennuste || '—'}</span>
       </div>
       <div class="field">
         <span class="field-label">Voitto / tappio</span>
