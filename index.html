@@ -421,7 +421,6 @@ function buildStats(rows) {
     <div class="stat green"><span class="stat-label">Oikein</span><span class="stat-value">${oikein.length}</span></div>
     <div class="stat red"><span class="stat-label">Väärin</span><span class="stat-value">${vaarin.length}</span></div>
     <div class="stat ${diff >= 0 ? 'green' : 'red'}"><span class="stat-label">Muutos</span><span class="stat-value">${diff >= 0 ? '+' : ''}${diff.toFixed(2).replace('.', ',')} €</span></div>
-    <div class="stat"><span class="stat-label">Tulossa</span><span class="stat-value">${pending.length}</span></div>
   `;
 }
 
@@ -477,6 +476,19 @@ function renderCards(rows, filter) {
     const cardClass  = isOikein ? 'oikein' : isVaarin ? 'vaarin' : 'pending';
     const badgeClass = isOikein ? 'oikein' : isVaarin ? 'vaarin' : isExtra ? 'extra' : 'pending';
     const badgeText  = isOikein ? '✓ Oikein' : isVaarin ? '✗ Väärin' : isExtra ? 'Extraveto' : 'Tulossa';
+    if (isExtra) {
+      return `
+<div class="card pending">
+  <div class="card-head">
+    <span class="card-datetime">Extraveto</span>
+    <span class="badge extra">EXTRAVETO</span>
+  </div>
+  <div class="card-body">
+    <div class="ottelu" style="text-transform:none;font-size:0.9rem;font-weight:600">Extraveto: kisojen paras maalintekijä: Dembele (Ranska) x 10€ = 260€ jos oikein</div>
+  </div>
+</div>`;
+    }
+
     const vtpColor = r.vtp == null ? 'dim' : r.vtp >= 0 ? 'green' : 'red';
     const vtpText  = r.vtp == null ? '—' : fmt(r.vtp, true);
     return `
