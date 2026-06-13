@@ -303,22 +303,11 @@
     font-weight: 600;
   }
 
-  /* ── SYNC BAR ───────────────────────────────────────────────────────── */
-  .sync-bar {
-    text-align: center;
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: var(--text-sec);
-    padding: 0.6rem 1rem 0.5rem;
-  }
-  .sync-bar a { color: var(--blue); text-decoration: none; }
-
   /* ── RESPONSIVE ─────────────────────────────────────────────────────── */
   @media (min-width: 500px) {
     body { font-size: 16px; }
     .cards    { padding: 0.75rem 1rem 0; max-width: 540px; margin: 0 auto; }
     .filters  { padding: 0.7rem 1rem 0; max-width: 540px; margin: 0 auto; grid-template-columns: repeat(4, 1fr); }
-    .sync-bar { max-width: 540px; margin: 0 auto; }
     .ottelu   { font-size: 1rem; }
     .stat-label { font-size: 0.7rem; }
     .stat-value { font-size: 1rem; }
@@ -345,7 +334,7 @@
 </div>
 
 <div class="cards" id="cards"></div>
-<div class="sync-bar" id="syncBar"></div>
+
 
 <script>
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_Kbtw9Zt4dCO21MbUd84SckMTwNEsthJ3sDbnv9M9rEhxmIfF3vyFIlUQ5m9F58UEUhw4atkFDY3A/pub?gid=1815299106&single=true&output=csv';
@@ -558,20 +547,12 @@ async function loadData() {
       const res = await fetch(SHEET_CSV_URL + '&cachebust=' + Date.now());
       const text = await res.text();
       const rows = parseCSV(text);
-      if (rows.length > 0) {
-        render(rows);
-        document.getElementById('syncBar').innerHTML =
-          'Live · <a href="' + SHEET_CSV_URL.split('?')[0] + '" target="_blank">Avaa taulukko</a>';
-        return;
-      }
+      if (rows.length > 0) { render(rows); return; }
     } catch(e) {
       console.warn('CSV fetch failed, using baked data', e);
     }
   }
   render(BAKED);
-  document.getElementById('syncBar').textContent = SHEET_CSV_URL
-    ? 'Virhe ladattaessa – näytetään tallennettu data.'
-    : 'Offline-data';
 }
 
 loadData();
