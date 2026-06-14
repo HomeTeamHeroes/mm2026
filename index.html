@@ -546,9 +546,8 @@ function renderCards(rows, filter) {
 </div>`;
     }
 
-    const vtpNet   = r.vtp == null ? null : (isOikein && r.panos != null ? r.vtp - r.panos : r.vtp);
-    const vtpColor = vtpNet == null ? 'dim' : vtpNet >= 0 ? 'green' : 'red';
-    const vtpText  = vtpNet == null ? '—' : fmt(vtpNet, true);
+    const vtpColor = r.vtp == null ? 'dim' : r.vtp >= 0 ? 'green' : 'red';
+    const vtpText  = r.vtp == null ? '—' : fmt(r.vtp, true);
     const abClass = isOikein ? 'ab ab-green ab-slow' : isVaarin ? 'ab ab-red ab-slow' : isVeikattu ? 'ab ab-white ab-slow' : '';
     return `
 <div class="card ${cardClass} ${abClass}">
@@ -579,7 +578,7 @@ function renderCards(rows, filter) {
   </div>
   <div class="card-foot">
     <span class="bankroll-label">Pankki tämän jälkeen</span>
-    <span class="bankroll-value">${r.pankki != null && r.tulos ? r.pankki.toFixed(2).replace('.', ',') + ' €' : '<span style="color:var(--yellow)">?</span>'}</span>
+    <span class="bankroll-value">${r.pankki != null ? r.pankki.toFixed(2).replace('.', ',') + ' €' : '<span style="color:var(--yellow)">?</span>'}</span>
   </div>
 </div>`;
   });
@@ -592,19 +591,10 @@ function renderCards(rows, filter) {
 }
 
 function recalcPankki(rows) {
-  let bank = STARTING_BANKROLL;
-  return rows.map(r => {
-    const settled = r.tulos === 'Oikein' || r.tulos === 'Väärin';
-    if (settled && r.panos != null) {
-      if (r.tulos === 'Oikein' && r.kerroin != null) {
-        bank = bank - r.panos + r.panos * r.kerroin;
-      } else if (r.tulos === 'Väärin') {
-        bank = bank - r.panos;
-      }
-      return { ...r, pankki: Math.round(bank * 100) / 100 };
-    }
-    return { ...r, pankki: settled ? r.pankki : null };
-  });
+  return rows.map(r => ({
+    ...r,
+    pankki: (r.pankki != null) ? r.pankki : null
+  }));
 }
 
 function render(rows) {
