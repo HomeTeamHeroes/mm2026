@@ -591,8 +591,24 @@ function renderCards(rows, filter) {
   container.innerHTML = (scenario ? renderScenarioCard(scenario) : '') + matchCards.join('');
 }
 
+function recalcPankki(rows) {
+  let bank = STARTING_BANKROLL;
+  return rows.map(r => {
+    const settled = r.tulos === 'Oikein' || r.tulos === 'Väärin';
+    if (settled && r.panos != null) {
+      if (r.tulos === 'Oikein' && r.kerroin != null) {
+        bank = bank - r.panos + r.panos * r.kerroin;
+      } else if (r.tulos === 'Väärin') {
+        bank = bank - r.panos;
+      }
+      return { ...r, pankki: Math.round(bank * 100) / 100 };
+    }
+    return { ...r, pankki: settled ? r.pankki : null };
+  });
+}
+
 function render(rows) {
-  allRows = rows;
+  allRows = recalcPankki(rows);
   buildStats(rows);
   renderCards(rows, currentFilter);
 }
