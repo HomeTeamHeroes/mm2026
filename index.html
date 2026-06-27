@@ -766,31 +766,62 @@ function drawChart(rows) {
   ctx.setLineDash([]);
   ctx.globalAlpha = 1;
 
-  // Actual line: solid green
+  // Actual line: green above starting bankroll, red below — drawn segment by segment
   if (actual.length > 1) {
-    ctx.strokeStyle = COL_ACTUAL;
-    ctx.lineWidth = 2.5;
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    actual.forEach((val, i) => {
-      const x = xPx(i);
-      const y = yPx(val);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.stroke();
+    // Draw with per-segment color based on whether value is above/below starting bankroll
+    for (let i = 1; i < actual.length; i++) {
+      const x0 = xPx(i - 1), y0 = yPx(actual[i - 1]);
+      const x1 = xPx(i),     y1 = yPx(actual[i]);
+      const v0 = actual[i - 1], v1 = actual[i];
+      const cross = (v0 >= STARTING_BANKROLL) !== (v1 >= STARTING_BANKROLL);
 
-    // Glow effect on actual line
-    ctx.strokeStyle = COL_ACTUAL;
-    ctx.lineWidth = 6;
-    ctx.globalAlpha = 0.12;
-    ctx.beginPath();
-    actual.forEach((val, i) => {
-      const x = xPx(i);
-      const y = yPx(val);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-    ctx.globalAlpha = 1;
+      if (!cross) {
+        // Simple segment — one color
+        ctx.strokeStyle = v0 >= STARTING_BANKROLL && v1 >= STARTING_BANKROLL ? COL_ACTUAL : COL_ZERO;
+        ctx.lineWidth = 2.5;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+      } else {
+        // Crosses the starting bankroll line — split at crossing point
+        const t = (STARTING_BANKROLL - v0) / (v1 - v0);
+        const xMid = x0 + t * (x1 - x0);
+        const yMid = yPx(STARTING_BANKROLL);
+
+        // First half
+        ctx.strokeStyle = v0 >= STARTING_BANKROLL ? COL_ACTUAL : COL_ZERO;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(xMid, yMid);
+        ctx.stroke();
+
+        // Second half
+        ctx.strokeStyle = v1 >= STARTING_BANKROLL ? COL_ACTUAL : COL_ZERO;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(xMid, yMid);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+      }
+    }
+
+    // Glow pass — same logic but wide + transparent
+    for (let i = 1; i < actual.length; i++) {
+      const x0 = xPx(i - 1), y0 = yPx(actual[i - 1]);
+      const x1 = xPx(i),     y1 = yPx(actual[i]);
+      const v0 = actual[i - 1], v1 = actual[i];
+      ctx.strokeStyle = (v0 >= STARTING_BANKROLL && v1 >= STARTING_BANKROLL) ? COL_ACTUAL : COL_ZERO;
+      ctx.lineWidth = 6;
+      ctx.globalAlpha = 0.1;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
   }
 
   // Dot at current position
@@ -799,7 +830,7 @@ function drawChart(rows) {
     const cy = yPx(lastBank);
     ctx.beginPath();
     ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-    ctx.fillStyle = COL_ACTUAL;
+    ctx.fillStyle = lastBank >= STARTING_BANKROLL ? COL_ACTUAL : COL_ZERO;
     ctx.fill();
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 1.5;
