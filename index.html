@@ -364,12 +364,34 @@
     font-weight: 600;
   }
 
+  /* ── CHART ──────────────────────────────────────────────────────────── */
+  .chart-wrap {
+    padding: 0.65rem 0.75rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  #bankChart {
+    width: 100%;
+    border-radius: var(--radius);
+    display: block;
+  }
+  .chart-footer {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text);
+    letter-spacing: 0.03em;
+    padding-bottom: 0.1rem;
+  }
+
   /* ── RESPONSIVE ─────────────────────────────────────────────────────── */
   @media (min-width: 500px) {
     body { font-size: 16px; }
-    .cards    { padding: 0.75rem 1rem 0; max-width: 540px; margin: 0 auto; }
-    .filters  { padding: 0.7rem 1rem 0; max-width: 540px; margin: 0 auto; grid-template-columns: repeat(4, 1fr); }
-    .ottelu   { font-size: 1rem; }
+    .cards      { padding: 0.75rem 1rem 0; max-width: 540px; margin: 0 auto; }
+    .filters    { padding: 0.7rem 1rem 0; max-width: 540px; margin: 0 auto; grid-template-columns: repeat(4, 1fr); }
+    .chart-wrap { padding: 0.65rem 1rem 0; max-width: 540px; margin: 0 auto; }
+    .ottelu     { font-size: 1rem; }
     .stat-label { font-size: 0.7rem; }
     .stat-value { font-size: 1rem; }
   }
@@ -393,6 +415,11 @@
   <button class="filter-btn ab ab-gray ab-slow" data-filter="pending">TULOSSA</button>
   <button class="filter-btn ab ab-green ab-slow" data-filter="oikein">✓ OIKEIN</button>
   <button class="filter-btn ab ab-red ab-slow" data-filter="vaarin">✗ VÄÄRIN</button>
+</div>
+
+<div class="chart-wrap" id="chartWrap">
+  <canvas id="bankChart"></canvas>
+  <div class="chart-footer" id="chartFooter"></div>
 </div>
 
 <div class="cards" id="cards"></div>
@@ -624,6 +651,177 @@ function renderCards(rows, filter) {
   container.innerHTML = (scenario ? renderScenarioCard(scenario) : '') + matchCards.join('');
 }
 
+function drawChart(rows) {
+  const canvas = document.getElementById('bankChart');
+  if (!canvas) return;
+  const wrap = document.getElementById('chartWrap');
+  const W = wrap.clientWidth - 24; // account for padding
+  const H = Math.round(W * 0.42);
+  canvas.width  = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  // Colours matching app palette
+  const COL_BG      = '#111111';
+  const COL_GRID    = '#2a2a2a';
+  const COL_AXIS    = '#444444';
+  const COL_TEXT    = '#ffffff';
+  const COL_ACTUAL  = '#00e64d';   // green — actual line
+  const COL_PROJ    = '#4db8ff';   // blue  — projected dotted line
+  const COL_START   = '#ffcc00';   // yellow dot at start
+  const COL_ZERO    = '#ff3333';   // red reference line if bankroll < start
+
+  const TOTAL_MATCHES = 104;
+  const PAD = { top: 18, right: 14, bottom: 32, left: 52 };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top  - PAD.bottom;
+
+  // Build data: index 0 = starting bankroll, index N = pankki after match N
+  const actual = [STARTING_BANKROLL]; // match 0 = before any match
+  rows.forEach(r => {
+    if (r.pankki != null && (r.tulos === 'Oikein' || r.tulos === 'Väärin')) {
+      actual.push(r.pankki);
+    }
+  });
+  const lastActualIdx = actual.length - 1; // 0-based match index of last known pankki
+  const lastBank = actual[lastActualIdx];
+
+  // Projected: straight line from STARTING_BANKROLL (match 0) to lastBank,
+  // then extended with same slope to match TOTAL_MATCHES
+  // slope = (lastBank - STARTING_BANKROLL) / lastActualIdx  (per match)
+  const slope = lastActualIdx > 0 ? (lastBank - STARTING_BANKROLL) / lastActualIdx : 0;
+  const projEndBank = STARTING_BANKROLL + slope * TOTAL_MATCHES;
+
+  // Y axis range
+  const allVals = [...actual, projEndBank, STARTING_BANKROLL];
+  let yMin = Math.min(...allVals);
+  let yMax = Math.max(...allVals);
+  const yPad = Math.max(20, (yMax - yMin) * 0.12);
+  yMin = Math.floor((yMin - yPad) / 10) * 10;
+  yMax = Math.ceil( (yMax + yPad) / 10) * 10;
+  if (yMin === yMax) { yMin -= 20; yMax += 20; }
+
+  function xPx(matchIdx) { return PAD.left + (matchIdx / TOTAL_MATCHES) * cW; }
+  function yPx(val)      { return PAD.top  + (1 - (val - yMin) / (yMax - yMin)) * cH; }
+
+  // Background
+  ctx.fillStyle = COL_BG;
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid lines + Y labels
+  ctx.font = `${Math.round(W * 0.022)}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  const ySteps = 5;
+  for (let i = 0; i <= ySteps; i++) {
+    const val = yMin + (yMax - yMin) * (i / ySteps);
+    const y = yPx(val);
+    ctx.strokeStyle = COL_GRID;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+    ctx.fillStyle = COL_TEXT;
+    ctx.fillText(Math.round(val) + '€', PAD.left - 6, y);
+  }
+
+  // Starting bankroll reference line (yellow dashed)
+  const yStart = yPx(STARTING_BANKROLL);
+  ctx.strokeStyle = COL_START;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath(); ctx.moveTo(PAD.left, yStart); ctx.lineTo(W - PAD.right, yStart); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+
+  // X axis labels (every 20 matches)
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = COL_TEXT;
+  ctx.globalAlpha = 0.7;
+  for (let i = 0; i <= TOTAL_MATCHES; i += 20) {
+    ctx.fillText(i, xPx(i), H - PAD.bottom + 6);
+  }
+  ctx.globalAlpha = 1;
+
+  // X axis line
+  ctx.strokeStyle = COL_AXIS;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(PAD.left, H - PAD.bottom);
+  ctx.lineTo(W - PAD.right, H - PAD.bottom);
+  ctx.stroke();
+
+  // Projected line: full span match 0 → TOTAL_MATCHES, dotted blue
+  ctx.strokeStyle = COL_PROJ;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 5]);
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(xPx(0), yPx(STARTING_BANKROLL));
+  ctx.lineTo(xPx(TOTAL_MATCHES), yPx(projEndBank));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+
+  // Actual line: solid green
+  if (actual.length > 1) {
+    ctx.strokeStyle = COL_ACTUAL;
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    actual.forEach((val, i) => {
+      const x = xPx(i);
+      const y = yPx(val);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Glow effect on actual line
+    ctx.strokeStyle = COL_ACTUAL;
+    ctx.lineWidth = 6;
+    ctx.globalAlpha = 0.12;
+    ctx.beginPath();
+    actual.forEach((val, i) => {
+      const x = xPx(i);
+      const y = yPx(val);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Dot at current position
+  if (actual.length > 1) {
+    const cx = xPx(lastActualIdx);
+    const cy = yPx(lastBank);
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = COL_ACTUAL;
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Dot at start
+  ctx.beginPath();
+  ctx.arc(xPx(0), yPx(STARTING_BANKROLL), 3, 0, Math.PI * 2);
+  ctx.fillStyle = COL_START;
+  ctx.fill();
+
+  // Footer: estimated final bankroll
+  const diff = projEndBank - STARTING_BANKROLL;
+  const sign = diff >= 0 ? '+' : '−';
+  const col  = diff >= 0 ? COL_ACTUAL : COL_ZERO;
+  const footer = document.getElementById('chartFooter');
+  if (footer) {
+    footer.innerHTML = `Arvioitu pankki lopussa &nbsp;<span style="color:${col}">${sign}${Math.abs(diff).toFixed(2).replace('.', ',')} €</span>`;
+  }
+}
+
 function recalcPankki(rows) {
   return rows.map(r => ({
     ...r,
@@ -634,6 +832,7 @@ function recalcPankki(rows) {
 function render(rows) {
   allRows = recalcPankki(rows);
   buildStats(rows);
+  drawChart(rows);
   renderCards(rows, currentFilter);
 }
 
